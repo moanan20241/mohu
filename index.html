@@ -248,19 +248,89 @@ button:active{
 .gallery{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:12px;
+  gap:18px 14px;
   margin-top:20px;
+  perspective:800px;
 }
 
 .photo{
+  position:relative;
   background:#f8d4e1;
   border:2px solid #67364b;
   padding:5px;
-  transform:rotate(-2deg);
+  opacity:0;
+  transform:translateY(22px) scale(.88) rotate(-7deg);
+  transform-origin:top center;
+  box-shadow:3px 5px 0 #d99ab0;
 }
 
 .photo:nth-child(even){
-  transform:rotate(2deg);
+  transform:translateY(22px) scale(.88) rotate(7deg);
+}
+
+.photo.pinned{
+  animation:pinMemory .75s cubic-bezier(.2,.8,.2,1) forwards;
+}
+
+.photo:nth-child(2).pinned{
+  animation-delay:.65s;
+}
+
+.photo:nth-child(3).pinned{
+  animation-delay:1.3s;
+}
+
+.photo:nth-child(4).pinned{
+  animation-delay:1.95s;
+}
+
+@keyframes pinMemory{
+  0%{
+    opacity:0;
+    transform:translateY(-35px) scale(.7) rotate(0deg);
+  }
+  65%{
+    opacity:1;
+    transform:translateY(5px) scale(1.04) rotate(-4deg);
+  }
+  100%{
+    opacity:1;
+    transform:translateY(0) scale(1) rotate(-2deg);
+  }
+}
+
+.photo:nth-child(even).pinned{
+  animation-name:pinMemoryEven;
+}
+
+@keyframes pinMemoryEven{
+  0%{
+    opacity:0;
+    transform:translateY(-35px) scale(.7) rotate(0deg);
+  }
+  65%{
+    opacity:1;
+    transform:translateY(5px) scale(1.04) rotate(4deg);
+  }
+  100%{
+    opacity:1;
+    transform:translateY(0) scale(1) rotate(2deg);
+  }
+}
+
+.photo::before{
+  content:"";
+  position:absolute;
+  z-index:2;
+  top:-9px;
+  left:50%;
+  width:13px;
+  height:13px;
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff5f8 0 12%,#f36a9e 28%,#a92f63 78%);
+  border:1px solid #67364b;
+  box-shadow:1px 2px 2px #67364b70;
 }
 
 .photo img{
@@ -276,6 +346,56 @@ button:active{
   padding:7px 0 3px;
   font-size:10px;
   font-weight:700;
+}
+
+/* FULL SCREEN MEMORY PHOTO */
+
+.photo img{
+  cursor:zoom-in;
+}
+
+.photo-viewer{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(35,12,25,.92);
+  cursor:zoom-out;
+}
+
+.photo-viewer.show{
+  display:flex;
+}
+
+.photo-viewer img{
+  max-width:100%;
+  max-height:90vh;
+  object-fit:contain;
+  border:5px solid #fffaf2;
+  box-shadow:0 8px 35px #0008;
+  animation:photoZoom .25s ease;
+}
+
+.photo-viewer .close-viewer{
+  position:absolute;
+  top:15px;
+  right:18px;
+  margin:0;
+  width:42px;
+  height:42px;
+  padding:0;
+  border-radius:50%;
+  font-size:25px;
+  line-height:1;
+  background:#f36a9e;
+}
+
+@keyframes photoZoom{
+  from{opacity:0;transform:scale(.88)}
+  to{opacity:1;transform:scale(1)}
 }
 
 /* LETTER */
@@ -580,7 +700,33 @@ button:active{
 </div>
 
 
+<!-- FULL SCREEN PHOTO VIEWER -->
+<div class="photo-viewer" id="photoViewer" onclick="closePhotoViewer()">
+  <button class="close-viewer" type="button" aria-label="Close" onclick="event.stopPropagation();closePhotoViewer()">×</button>
+  <img id="fullScreenPhoto" src="" alt="Full screen memory" onclick="event.stopPropagation()">
+</div>
+
 <script>
+
+// FULL SCREEN MEMORY PHOTOS
+
+document.querySelectorAll("#screen4 .photo img").forEach(photo => {
+  photo.addEventListener("click", () => {
+    const viewer = document.getElementById("photoViewer");
+    const fullImage = document.getElementById("fullScreenPhoto");
+    fullImage.src = photo.src;
+    fullImage.alt = photo.alt || "Memory photo";
+    viewer.classList.add("show");
+  });
+});
+
+function closePhotoViewer(){
+  document.getElementById("photoViewer").classList.remove("show");
+}
+
+document.addEventListener("keydown", event => {
+  if(event.key === "Escape") closePhotoViewer();
+});
 
 // FLOATING HEARTS
 
@@ -615,6 +761,16 @@ function showScreen(number){
   });
 
   document.getElementById("screen"+number).classList.remove("hidden");
+
+  // Reveal Memory Wall photos one by one whenever the Memories page opens.
+  if(number === 4){
+    const memoryPhotos = document.querySelectorAll("#screen4 .photo");
+    memoryPhotos.forEach(photo => photo.classList.remove("pinned"));
+    void document.getElementById("screen4").offsetWidth;
+    memoryPhotos.forEach((photo, index) => {
+      setTimeout(() => photo.classList.add("pinned"), index * 650);
+    });
+  }
 
   // Reset the surprise so WATCH AGAIN can replay the full experience endlessly.
   if(number === 0){
